@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:nebengbro_apps/Users/homepage.dart';
+import 'package:intl/intl.dart';
 
 class Rangkumanorder extends StatefulWidget {
   const Rangkumanorder({super.key});
@@ -9,8 +13,57 @@ class Rangkumanorder extends StatefulWidget {
 }
 
 class _RangkumanorderState extends State<Rangkumanorder> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final DatabaseReference pickupRef = FirebaseDatabase.instance.ref('locations/start/name');
   final DatabaseReference dropRef = FirebaseDatabase.instance.ref('locations/end/name');
+
+  String userName = 'Loading...';
+  // String orderTime = 'Loading...';
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserData();
+  }
+
+  Future<void> _getUserData() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      try {
+        // Retrieve user data
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          print("User data: $userData");
+          setState(() {
+            userName = userData['name'] ?? 'No Name';
+          });
+        } else {
+          print("User document does not exist");
+        }
+
+        // Retrieve order data
+        // DocumentSnapshot orderDoc = await _firestore.collection('orders').doc(user.uid).get();
+        // if (orderDoc.exists) {
+        //   Map<String, dynamic>? orderData = orderDoc.data() as Map<String, dynamic>?;
+        //   if (orderData != null && orderData['Waktu_Order'] is Timestamp) {
+        //     Timestamp orderTimestamp = orderData['Waktu_Order'] as Timestamp;
+        //     DateTime orderDateTime = orderTimestamp.toDate();
+        //     setState(() {
+        //       orderTime = DateFormat('HH:mm').format(orderDateTime); // Only display time
+        //     });
+        //   } else {
+        //     print("Order data is null or Waktu_Order is not a Timestamp");
+        //   }
+        // } else {
+        //   print("Order document does not exist");
+        // }
+      } catch (e) {
+        print("Error getting user or order data: $e");
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,20 +92,20 @@ class _RangkumanorderState extends State<Rangkumanorder> {
   }
 
   Widget _buildHeader() {
-    return const Row(
+    return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            Icon(Icons.directions_car, size: 40, color: Colors.blue),
-            SizedBox(width: 8),
-            Text(
+            const Icon(Icons.directions_car, size: 40, color: Colors.blue),
+            const SizedBox(width: 8),
+            const Text(
               'Nebeng Bro',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
+            // Text(orderTime, style: const TextStyle(fontSize: 16)),
           ],
         ),
-        Text('13 Apr, 18:07', style: TextStyle(fontSize: 16)),
       ],
     );
   }
@@ -66,15 +119,13 @@ class _RangkumanorderState extends State<Rangkumanorder> {
           child: const Icon(Icons.person, size: 40, color: Colors.blue),
         ),
         const SizedBox(width: 16),
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Daffa Arif Muhammad',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              userName,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Text('Daihatsu Ayla'),
-            Text('P5034YZ'),
           ],
         ),
       ],
@@ -117,13 +168,6 @@ class _RangkumanorderState extends State<Rangkumanorder> {
               );
             }
           },
-        ),
-        const Row(
-          children: [
-            Icon(Icons.more_vert, color: Colors.grey),
-            SizedBox(width: 8),
-            Text('4 km', style: TextStyle(fontSize: 16, color: Colors.grey)),
-          ],
         ),
         const Row(
           children: [
@@ -190,7 +234,12 @@ class _RangkumanorderState extends State<Rangkumanorder> {
     return Center(
       child: ElevatedButton(
         onPressed: () {
-          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomePage_User(),
+            ),
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color.fromRGBO(63, 81, 181, 1),

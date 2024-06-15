@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nebengbro_apps/Drivers/dompet1.dart';
-import 'package:nebengbro_apps/Drivers/profile.dart';
 import 'package:nebengbro_apps/Drivers/message.dart';
-import 'package:nebengbro_apps/Drivers/map_driver.dart';
+import 'package:nebengbro_apps/Drivers/profile.dart';
 
-// ignore: camel_case_types
 class Beranda_Driver extends StatefulWidget {
   final String? username;
 
   const Beranda_Driver({super.key, required this.username});
 
   @override
-  // ignore: library_private_types_in_public_api
   _Beranda_DriverState createState() => _Beranda_DriverState();
 }
 
-// ignore: camel_case_types
 class _Beranda_DriverState extends State<Beranda_Driver> {
   int _selectedIndex = 0;
-
   late List<Widget> _pages;
 
   @override
@@ -79,7 +74,9 @@ class _Beranda_DriverState extends State<Beranda_Driver> {
       height: _selectedIndex == index ? 35 : 25,
       child: Icon(
         icon,
-        color: _selectedIndex == index ? const Color.fromRGBO(63, 81, 181, 1) : Colors.grey,
+        color: _selectedIndex == index
+            ? const Color.fromRGBO(63, 81, 181, 1)
+            : Colors.grey,
       ),
     );
   }
@@ -91,63 +88,40 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.username});
 
   @override
-  // ignore: library_private_types_in_public_api
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Map<String, dynamic>> taxiServices = [
-    {
-      'name': 'Evan',
-      'rating': 4.9,
-      'pickupLocation': 'Matahari Royal Plaza',
-      'price': 20000,
-      'date': '13 Apr, 18:07',
-    },
-    {
-      'name': 'Theresa',
-      'rating': 4.5,
-      'pickupLocation': 'Jember Roxy Square',
-      'price': 15000,
-      'date': '13 Apr, 16:45',
-    },
-    {
-      'name': 'Mustofa',
-      'rating': 4.8,
-      'pickupLocation': 'Aston Jember Hotel',
-      'price': 35000,
-      'date': '13 Apr, 14:30',
-    },
-    {
-      'name': 'Kezia',
-      'rating': 4.7,
-      'pickupLocation': 'Lippo Plaza Jember',
-      'price': 15000,
-      'date': '13 Apr, 13:15',
-    },
-  ];
-
-  List<String> destinations = List.filled(4, 'Loading...');
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<Map<String, dynamic>> usersWithOrders = [];
+  bool isOnline = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchDestinations();
+    _fetchUsersWithOrders();
   }
 
-  Future<void> _fetchDestinations() async {
-    for (int i = 0; i < taxiServices.length; i++) {
-      String destination = await _fetchDestination();
-      setState(() {
-        destinations[i] = destination;
-      });
+  Future<void> _fetchUsersWithOrders() async {
+    QuerySnapshot usersSnapshot = await _firestore.collection('users').get();
+    for (var userDoc in usersSnapshot.docs) {
+      QuerySnapshot ordersSnapshot = await userDoc.reference.collection('orders').get();
+      if (ordersSnapshot.docs.isNotEmpty) {
+        setState(() {
+          usersWithOrders.add({
+            'name': userDoc['name'],
+            'email': userDoc['email'],
+            'orders': ordersSnapshot.docs.map((orderDoc) => orderDoc.data()).toList(),
+          });
+        });
+      }
     }
   }
 
-  Future<String> _fetchDestination() async {
-    DatabaseReference ref = FirebaseDatabase.instance.ref('locations/end/name');
-    DatabaseEvent event = await ref.once();
-    return event.snapshot.value.toString();
+  void toggleOnlineStatus() {
+    setState(() {
+      isOnline = !isOnline;
+    });
   }
 
   @override
@@ -172,10 +146,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         children: [
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: toggleOnlineStatus,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromRGBO(191, 231, 49, 1),
-                              foregroundColor: Colors.black,
+                              backgroundColor: isOnline
+                                  ? const Color.fromRGBO(191, 231, 49, 1)
+                                  : Colors.white,
+                              foregroundColor: isOnline ? Colors.black : Colors.grey,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
@@ -185,15 +161,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(width: 10),
                           OutlinedButton(
-                            onPressed: () {},
+                            onPressed: toggleOnlineStatus,
                             style: OutlinedButton.styleFrom(
+                              backgroundColor: isOnline
+                                  ? Colors.white
+                                  : const Color.fromRGBO(191, 231, 49, 1),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                              side: const BorderSide(color: Color.fromRGBO(191, 231, 49, 1)),
+                              side: BorderSide(
+                                color: isOnline ? Colors.grey : const Color.fromRGBO(191, 231, 49, 1),
+                              ),
                             ),
-                            child: const Text('Offline', style: TextStyle(color: Colors.black)),
+                            child: Text(
+                              'Offline',
+                              style: TextStyle(color: isOnline ? Colors.grey : Colors.black),
+                            ),
                           ),
                         ],
                       ),
@@ -209,18 +193,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: taxiServices.length,
+                  itemCount: usersWithOrders.length,
                   itemBuilder: (context, index) {
+                    var user = usersWithOrders[index];
                     return GestureDetector(
                       onTap: () {
-                        // Navigasi ke halaman detail atau chat jika diperlukan
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => TextMessageScreen()),
                         );
                       },
                       child: Container(
-                        width: screenWidth * 0.9, // Set the container's width to 90% of the screen's width
+                        width: screenWidth * 0.9,
                         padding: const EdgeInsets.all(10),
                         margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
                         decoration: BoxDecoration(
@@ -239,77 +223,51 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              taxiServices[index]['date'],
+                              user['name'],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              user['email'],
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey,
                               ),
                             ),
-                            const SizedBox(height: 5),
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: Colors.grey[200],
-                                  child: const Icon(Icons.person, size: 30, color: Colors.blue),
-                                ),
-                                const SizedBox(width: 10),
-                                Column(
+                            const SizedBox(height: 10),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: user['orders'].length,
+                              itemBuilder: (context, orderIndex) {
+                                var order = user['orders'][orderIndex];
+                                return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      taxiServices[index]['pickupLocation'],
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      'Order at: ${order['Waktu_Order']}',
+                                      style: const TextStyle(fontSize: 14),
                                     ),
                                     const SizedBox(height: 5),
-                                    Row(
-                                      children: <Widget>[
-                                        const Icon(Icons.star, color: Colors.yellow, size: 14),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          taxiServices[index]['rating'].toString(),
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                      ],
+                                    Text(
+                                      'Start: ${order['start_location']['latitude']}, ${order['start_location']['longitude']}',
+                                      style: const TextStyle(fontSize: 14),
                                     ),
+                                    Text(
+                                      'End: ${order['end_location']['latitude']}, ${order['end_location']['longitude']}',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    Text(
+                                      'Price: ${order['price']}',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    const Divider(),
                                   ],
-                                ),
-                                const Spacer(),
-                                Text(
-                                  'Rp${taxiServices[index]['price']}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on, color: Colors.green, size: 30),
-                                const SizedBox(width: 5),
-                                Expanded(
-                                  child: Text(
-                                    destinations[index],
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                GestureDetector(
-                                  onTap: () {
-                                    // Navigasi ke halaman peta ketika ikon diklik
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => Maps_Drivers()),
-                                    );
-                                  },
-                                  child: const Icon(Icons.map, color: Colors.blue, size: 40),
-                                ),
-                              ],
+                                );
+                              },
                             ),
                           ],
                         ),

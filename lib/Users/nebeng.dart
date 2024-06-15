@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:nebengbro_apps/Users/rangkumanorder.dart';
@@ -21,6 +23,8 @@ class _NebengScreenState extends State<NebengScreen> {
   LatLng? _selectedStartLocation;
   LatLng? _selectedEndLocation;
   final DatabaseReference databaseReference = FirebaseDatabase.instance.ref();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Set<Polyline> _polylines = {};
   List<LatLng> _routePoints = [];
   bool _selectingStart = true;
@@ -119,6 +123,34 @@ class _NebengScreenState extends State<NebengScreen> {
     }
   }
 
+  Future<void> _placeOrder() async {
+    User? user = _auth.currentUser;
+    if (user != null && _selectedStartLocation != null && _selectedEndLocation != null) {
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+      Map<String, dynamic>? existingUserData = userDoc.data() as Map<String, dynamic>?;
+
+      // Order data
+      Map<String, dynamic> orderData = {
+        'price': 'Rp. 15.000',
+        'service_type': 'Standard',
+        'start_location': {
+          'latitude': _selectedStartLocation!.latitude,
+          'longitude': _selectedStartLocation!.longitude,
+          'name': _startLocationName,
+        },
+        'end_location': {
+          'latitude': _selectedEndLocation!.latitude,
+          'longitude': _selectedEndLocation!.longitude,
+          'name': _endLocationName,
+        },
+        'Waktu_Order': FieldValue.serverTimestamp(),
+      };
+
+      // Save order data in Firestore without modifying existing user data
+      await _firestore.collection('users').doc(user.uid).collection('orders').add(orderData);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -200,14 +232,13 @@ class _NebengScreenState extends State<NebengScreen> {
                       ],
                     ),
                     child: Column(
-                      // Change from Row to Column
                       children: [
                         Image.asset(
                           'assets/image/car1.png',
                           width: 50,
                           height: 50,
                         ),
-                        SizedBox(height: 10), // Spasi antara gambar dan teks
+                        SizedBox(height: 10),
                         Text(
                           'Standard',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -223,8 +254,8 @@ class _NebengScreenState extends State<NebengScreen> {
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Handle the button press
+                      onPressed: () async {
+                        await _placeOrder(); // Save the order data to Firestore
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -235,7 +266,7 @@ class _NebengScreenState extends State<NebengScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('Pesan Tebeng',
+                          Text('Pesan Nebeng',
                               style:
                                   TextStyle(fontSize: 12, color: Colors.white)),
                           SizedBox(width: 10),
@@ -245,13 +276,10 @@ class _NebengScreenState extends State<NebengScreen> {
                         ],
                       ),
                       style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                            vertical:
-                                5), // Ubah ukuran tombol (padding vertikal)
+                        padding: EdgeInsets.symmetric(vertical: 10),
                         backgroundColor: Color.fromRGBO(63, 81, 181, 1),
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(30), // Ubah radius tombol
+                          borderRadius: BorderRadius.circular(30),
                         ),
                       ),
                     ),
@@ -319,9 +347,9 @@ class _NebengScreenState extends State<NebengScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_selectedStartLocation != null && _selectedEndLocation != null) {
-            _showBottomSheet(); // Show the bottom sheet when both locations are selected
+            _showBottomSheet();
           } else {
-            print('Start or End location is not selected'); // Debug print
+            print('Start or End location is not selected');
           }
         },
         child: Icon(Icons.check),
