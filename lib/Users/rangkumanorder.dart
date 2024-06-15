@@ -5,37 +5,12 @@ class Rangkumanorder extends StatefulWidget {
   const Rangkumanorder({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _RangkumanorderState createState() => _RangkumanorderState();
 }
 
 class _RangkumanorderState extends State<Rangkumanorder> {
-  String pickupLocation = 'Loading...';
-  String dropLocation = 'Loading...';
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchPickupLocation();
-    _fetchDropLocation();
-  }
-
-  Future<void> _fetchPickupLocation() async {
-    DatabaseReference ref =
-        FirebaseDatabase.instance.ref('locations/start/name');
-    DatabaseEvent event = await ref.once();
-    setState(() {
-      pickupLocation = event.snapshot.value.toString();
-    });
-  }
-  Future<void> _fetchDropLocation() async {
-    DatabaseReference ref =
-        FirebaseDatabase.instance.ref('locations/end/name');
-    DatabaseEvent event = await ref.once();
-    setState(() {
-      dropLocation = event.snapshot.value.toString();
-    });
-  }
+  final DatabaseReference pickupRef = FirebaseDatabase.instance.ref('locations/start/name');
+  final DatabaseReference dropRef = FirebaseDatabase.instance.ref('locations/end/name');
 
   @override
   Widget build(BuildContext context) {
@@ -43,19 +18,19 @@ class _RangkumanorderState extends State<Rangkumanorder> {
       appBar: AppBar(
         title: const Text('Pesanan'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(context),
+            _buildHeader(),
             const SizedBox(height: 16),
             _buildOrderDetails(),
             const SizedBox(height: 16),
             _buildTravelDetails(),
             const SizedBox(height: 16),
             _buildPaymentDetails(),
-            const Spacer(),
+            const SizedBox(height: 16),
             _buildBackButton(context),
           ],
         ),
@@ -63,7 +38,7 @@ class _RangkumanorderState extends State<Rangkumanorder> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader() {
     return const Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -119,21 +94,29 @@ class _RangkumanorderState extends State<Rangkumanorder> {
           children: [
             Icon(Icons.arrow_upward, color: Colors.blue),
             SizedBox(width: 8),
-            Text('Lokasi jemput',
-                style: TextStyle(fontSize: 16, color: Colors.grey)),
+            Text('Lokasi jemput', style: TextStyle(fontSize: 16, color: Colors.grey)),
           ],
         ),
-        Row(
-          children: [
-            const SizedBox(width: 24),
-            Expanded(
-              child: Text(
-                pickupLocation,
-                style: const TextStyle(fontSize: 16),
-                softWrap: true,
-              ),
-            ),
-          ],
+        StreamBuilder<DatabaseEvent>(
+          stream: pickupRef.onValue,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.only(left: 24),
+                child: Text('Loading...', style: TextStyle(fontSize: 16)),
+              );
+            } else if (snapshot.hasError) {
+              return const Padding(
+                padding: EdgeInsets.only(left: 24),
+                child: Text('Error loading location', style: TextStyle(fontSize: 16)),
+              );
+            } else {
+              return Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: Text(snapshot.data?.snapshot.value.toString() ?? 'Unknown', style: const TextStyle(fontSize: 16)),
+              );
+            }
+          },
         ),
         const Row(
           children: [
@@ -146,21 +129,29 @@ class _RangkumanorderState extends State<Rangkumanorder> {
           children: [
             Icon(Icons.arrow_downward, color: Colors.red),
             SizedBox(width: 8),
-            Text('Lokasi tujuan',
-                style: TextStyle(fontSize: 16, color: Colors.grey)),
+            Text('Lokasi tujuan', style: TextStyle(fontSize: 16, color: Colors.grey)),
           ],
         ),
-        Row(
-          children: [
-            const SizedBox(width: 24),
-            Expanded(
-              child: Text(
-                dropLocation,
-                style: const TextStyle(fontSize: 16),
-                softWrap: true,
-              ),
-            ),
-          ],
+        StreamBuilder<DatabaseEvent>(
+          stream: dropRef.onValue,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.only(left: 24),
+                child: Text('Loading...', style: TextStyle(fontSize: 16)),
+              );
+            } else if (snapshot.hasError) {
+              return const Padding(
+                padding: EdgeInsets.only(left: 24),
+                child: Text('Error loading location', style: TextStyle(fontSize: 16)),
+              );
+            } else {
+              return Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: Text(snapshot.data?.snapshot.value.toString() ?? 'Unknown', style: const TextStyle(fontSize: 16)),
+              );
+            }
+          },
         ),
       ],
     );
