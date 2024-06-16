@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // Tambahkan ini untuk memformat tanggal dan waktu
 import 'package:nebengbro_apps/Drivers/dompet1.dart';
+import 'package:nebengbro_apps/Drivers/map_driver.dart';
 import 'package:nebengbro_apps/Drivers/message.dart';
 import 'package:nebengbro_apps/Drivers/profile.dart';
 
@@ -105,13 +107,21 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchUsersWithOrders() async {
     QuerySnapshot usersSnapshot = await _firestore.collection('users').get();
     for (var userDoc in usersSnapshot.docs) {
-      QuerySnapshot ordersSnapshot = await userDoc.reference.collection('orders').get();
+      QuerySnapshot ordersSnapshot =
+          await userDoc.reference.collection('orders').get();
       if (ordersSnapshot.docs.isNotEmpty) {
         setState(() {
           usersWithOrders.add({
             'name': userDoc['name'],
             'email': userDoc['email'],
-            'orders': ordersSnapshot.docs.map((orderDoc) => orderDoc.data()).toList(),
+            'orders': ordersSnapshot.docs.map((orderDoc) {
+              var orderData = orderDoc.data() as Map<String, dynamic>;
+              return {
+                'LokasiTujuan': orderData.containsKey('end_location')
+                    ? orderData['end_location']['LokasiTujuan']
+                    : 'No Location',
+              };
+            }).toList(),
           });
         });
       }
@@ -122,6 +132,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       isOnline = !isOnline;
     });
+  }
+
+  String _formatDateTime(Timestamp timestamp) {
+    DateTime dateTime = timestamp.toDate();
+    return DateFormat('dd-MM-yyyy').format(dateTime);
   }
 
   @override
@@ -151,11 +166,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               backgroundColor: isOnline
                                   ? const Color.fromRGBO(191, 231, 49, 1)
                                   : Colors.white,
-                              foregroundColor: isOnline ? Colors.black : Colors.grey,
+                              foregroundColor:
+                                  isOnline ? Colors.black : Colors.grey,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 30, vertical: 10),
                             ),
                             child: const Text('Online'),
                           ),
@@ -169,14 +186,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 30, vertical: 10),
                               side: BorderSide(
-                                color: isOnline ? Colors.grey : const Color.fromRGBO(191, 231, 49, 1),
+                                color: isOnline
+                                    ? Colors.grey
+                                    : const Color.fromRGBO(191, 231, 49, 1),
                               ),
                             ),
                             child: Text(
                               'Offline',
-                              style: TextStyle(color: isOnline ? Colors.grey : Colors.black),
+                              style: TextStyle(
+                                  color: isOnline ? Colors.grey : Colors.black),
                             ),
                           ),
                         ],
@@ -200,13 +221,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => TextMessageScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => Maps_Drivers()),
                         );
                       },
                       child: Container(
                         width: screenWidth * 0.9,
                         padding: const EdgeInsets.all(10),
-                        margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 20),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(10),
                           color: const Color.fromARGB(255, 255, 255, 255),
@@ -219,55 +242,69 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        child: Column(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            Text(
-                              user['name'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    user['name'],
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    user['email'],
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount: user['orders'].length,
+                                    itemBuilder: (context, orderIndex) {
+                                      var order = user['orders'][orderIndex];
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            'Tujuan: ${order['LokasiTujuan']}', // Display the end location name
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                          ),
+                                          const Divider(),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 5),
-                            Text(
-                              user['email'],
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: user['orders'].length,
-                              itemBuilder: (context, orderIndex) {
-                                var order = user['orders'][orderIndex];
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Order at: ${order['Waktu_Order']}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Text(
-                                      'Start: ${order['start_location']['latitude']}, ${order['start_location']['longitude']}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    Text(
-                                      'End: ${order['end_location']['latitude']}, ${order['end_location']['longitude']}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    Text(
-                                      'Price: ${order['price']}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    const Divider(),
-                                  ],
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => Maps_Drivers()),
                                 );
                               },
+                              child: Image.asset(
+                                'assets/image/maps.png',
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ],
                         ),

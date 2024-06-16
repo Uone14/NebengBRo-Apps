@@ -78,15 +78,11 @@ class _NebengScreenState extends State<NebengScreen> {
         ? databaseReference.child('locations/start')
         : databaseReference.child('locations/end');
 
-    // Set the new location
     await locationRef.set({
       'latitude': pos.latitude,
       'longitude': pos.longitude,
       'name': isStart ? _startLocationName : _endLocationName,
     });
-
-    // Get directions and draw polyline
-    await _getDirectionsAndDrawPolyline();
   }
 
   Future<void> _getDirectionsAndDrawPolyline() async {
@@ -136,12 +132,12 @@ class _NebengScreenState extends State<NebengScreen> {
         'start_location': {
           'latitude': _selectedStartLocation!.latitude,
           'longitude': _selectedStartLocation!.longitude,
-          'name': _startLocationName,
+          'LokasiJemput': _startLocationName,
         },
         'end_location': {
           'latitude': _selectedEndLocation!.latitude,
           'longitude': _selectedEndLocation!.longitude,
-          'name': _endLocationName,
+          'LokasiTujuan': _endLocationName,
         },
         'Waktu_Order': FieldValue.serverTimestamp(),
       };

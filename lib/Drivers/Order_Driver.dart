@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:nebengbro_apps/Drivers/home.dart';
+import 'package:nebengbro_apps/Drivers/jemput_pelanggan.dart';
 
 class OrderDrivers extends StatefulWidget {
   const OrderDrivers({super.key});
@@ -10,13 +13,17 @@ class OrderDrivers extends StatefulWidget {
 }
 
 class _OrderDriversState extends State<OrderDrivers> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String endLocation = 'Loading...';
   String startLocation = 'Loading...';
+  String driverName = 'Loading...';
 
   @override
   void initState() {
     super.initState();
     fetchLocationData();
+    fetchDriverData();
   }
 
   Future<void> fetchLocationData() async {
@@ -32,6 +39,17 @@ class _OrderDriversState extends State<OrderDrivers> {
     });
   }
 
+  Future<void> fetchDriverData() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      DocumentSnapshot doc = await _firestore.collection('drivers').doc(user.uid).get();
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      setState(() {
+        driverName = data['name'] ?? 'No name';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,14 +62,14 @@ class _OrderDriversState extends State<OrderDrivers> {
           child: Column(
             children: [
               // Header
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     '19:02',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  CircleAvatar(
+                  const CircleAvatar(
                     backgroundImage: AssetImage('assets/image/profil.png'),
                     radius: 30,
                   ),
@@ -59,16 +77,16 @@ class _OrderDriversState extends State<OrderDrivers> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Daffa Arif....',
-                        style: TextStyle(
+                        driverName,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text('Status Kerja: Aktif'),
+                      const Text('Status Kerja: Aktif'),
                     ],
                   ),
-                  Row(
+                  const Row(
                     children: [
                       Icon(Icons.star, color: Colors.amber),
                       Text('5.00'),
@@ -81,14 +99,6 @@ class _OrderDriversState extends State<OrderDrivers> {
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '#443',
-                    style: TextStyle(fontSize: 24, color: Colors.blue),
-                  ),
-                  Text(
-                    'Tiba',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -148,7 +158,12 @@ class _OrderDriversState extends State<OrderDrivers> {
                     label: const Text('Chat'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => Jemput_Pelanggan()),
+                      );
+                    },
                     icon: const Icon(Icons.person_outline),
                     label: const Text('Jemput Pelanggan'),
                   ),
